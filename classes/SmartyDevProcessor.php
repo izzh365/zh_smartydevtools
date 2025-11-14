@@ -7,20 +7,18 @@
  * NOTICE OF LICENSE
  *
  * This source file is subject to the Open Software License (OSL 3.0)
- * that is bundled with this package in the file LICENSE.md.
+ * that is bundled with the package in the file LICENSE.md.
  * It is also available through the world-wide-web at this URL:
  * https://opensource.org/licenses/OSL-3.0
  * If you did not receive a copy of the license and are unable to
  * obtain it through the world-wide-web, please send an email
-
  *
  * DISCLAIMER
  *
  * Do not edit or add to this file if you wish to upgrade PrestaShop to newer
  * versions in the future. If you wish to customize PrestaShop for your
- * 
  *
-
+ *
  * @copyright Since 2007 PrestaShop SA and Contributors
  * @license   https://opensource.org/licenses/OSL-3.0 Open Software License (OSL 3.0)
  */
@@ -59,10 +57,11 @@ class SmartyDevProcessor
         // 处理widget标签
         $source = self::processWidgetComments($source, $smarty);
 
+        // 处理eval标签（新增）
+        $source = self::processEvalComments($source, $smarty);
+
         // 然后处理include标签
         $source = self::processIncludeComments($source, $smarty);
-
-        
 
         return $source;
     }
@@ -90,31 +89,31 @@ class SmartyDevProcessor
     {
         // 先移除被注释掉的内容，避免处理被注释的include标签
         $cleanSource = preg_replace('/\{\*.*?\*\}/s', '', $source);
-        
+
         // 使用逐字符解析的方式处理include标签，确保正确处理嵌套的大括号
         $result = '';
         $offset = 0;
         $length = strlen($source);
-        
+
         while ($offset < $length) {
             // 查找include标签的开始位置
             $startPos = strpos($source, '{include', $offset);
-            
+
             // 如果没有更多include标签了，添加剩余内容并退出
             if ($startPos === false) {
                 $result .= substr($source, $offset);
                 break;
             }
-            
+
             // 添加当前位置到include标签之间的内容
             $result .= substr($source, $offset, $startPos - $offset);
-            
+
             // 找到标签的结束位置（平衡大括号）
             $endPos = self::findMatchingBrace($source, $startPos);
-            
+
             if ($endPos !== false) {
                 $fullTag = substr($source, $startPos, $endPos - $startPos + 1);
-                
+
                 // 检查这个标签是否在注释中
                 if (strpos($cleanSource, $fullTag) === false) {
                     // 如果在原始source中能找到但在cleanSource中找不到，说明在注释中
@@ -122,11 +121,11 @@ class SmartyDevProcessor
                     $offset = $endPos + 1;
                     continue;
                 }
-                
+
                 // 提取文件名
                 if (preg_match('/file=([\'"])([^\'"]+)\1/', $fullTag, $fileMatches)) {
                     $file = $fileMatches[2];
-                    
+
                     // 获取文件的绝对路径
                     $absolutePath = self::findAbsolutePath($file, $smarty);
                     // 将路径中的反斜杠替换为正斜杠，避免HTML注释中的"--"问题
@@ -140,7 +139,7 @@ class SmartyDevProcessor
                     // 如果无法提取文件名，则不处理该标签
                     $result .= $fullTag;
                 }
-                
+
                 $offset = $endPos + 1;
             } else {
                 // 如果找不到结束位置，添加当前字符并继续
@@ -148,10 +147,10 @@ class SmartyDevProcessor
                 $offset = $startPos + 1;
             }
         }
-        
+
         return $result;
     }
-    
+
     /**
      * 查找匹配的大括号位置
      */
@@ -161,10 +160,10 @@ class SmartyDevProcessor
         $length = strlen($source);
         $inString = false;
         $stringDelimiter = '';
-        
+
         for ($i = $startPos; $i < $length; $i++) {
             $char = $source[$i];
-            
+
             // 处理字符串内的字符（忽略大括号）
             if ($inString) {
                 if ($char === $stringDelimiter && ($i === 0 || $source[$i-1] !== '\\')) {
@@ -172,14 +171,14 @@ class SmartyDevProcessor
                 }
                 continue;
             }
-            
+
             // 检查是否进入字符串
             if ($char === '"' || $char === "'") {
                 $inString = true;
                 $stringDelimiter = $char;
                 continue;
             }
-            
+
             // 处理大括号
             if ($char === '{') {
                 $braceCount++;
@@ -190,7 +189,7 @@ class SmartyDevProcessor
                 }
             }
         }
-        
+
         return false;
     }
 
@@ -204,7 +203,7 @@ class SmartyDevProcessor
 
         // 先移除被注释掉的内容，避免处理被注释的block标签
         $cleanSource = preg_replace('/\{\*.*?\*\}/s', '', $source);
-        
+
         // 先处理自闭合的block标签 {block name='xxx'}{/block}
         $selfClosingPattern = '/\{block\s+name=([\'"])([^\'"]+)\1([^\}]*)\}\{\/block\}/';
         $source = preg_replace_callback($selfClosingPattern, function ($matches) use ($currentTemplate, $cleanSource) {
@@ -213,10 +212,10 @@ class SmartyDevProcessor
                 // 如果在原始source中能找到但在cleanSource中找不到，说明在注释中
                 return $matches[0];
             }
-            
+
             $blockName = $matches[2];
             $params = $matches[3];
-            
+
             // 对于自闭合标签，直接添加开始和结束注释
             return "<!-- START BLOCK: {$blockName} (in: {$currentTemplate}) -->\n" .
                    "{block name='{$blockName}'{$params}}{/block}" .
@@ -225,23 +224,23 @@ class SmartyDevProcessor
 
         // 重置block栈
         self::$blockStack = array();
-        
+
         // 使用更精确的方法处理开始和结束标签
         $result = '';
         $offset = 0;
         $length = strlen($source);
-        
+
         while ($offset < $length) {
             // 查找最近的开始或结束标签
             $startPos = strpos($source, '{block', $offset);
             $endPos = strpos($source, '{/block}', $offset);
-            
+
             // 如果没有更多标签了，添加剩余内容并退出
             if ($startPos === false && $endPos === false) {
                 $result .= substr($source, $offset);
                 break;
             }
-            
+
             // 确定下一个要处理的标签位置
             if ($startPos === false) {
                 $nextPos = $endPos;
@@ -253,24 +252,24 @@ class SmartyDevProcessor
                 $nextPos = min($startPos, $endPos);
                 $isStart = ($nextPos == $startPos);
             }
-            
+
             // 添加当前位置到下一个标签之间的内容
             $result .= substr($source, $offset, $nextPos - $offset);
-            
+
             if ($isStart) {
                 // 处理开始标签
                 if (preg_match('/\{block\s+name=([\'"])([^\'"]+)\1([^\}]*)\}/', $source, $matches, 0, $nextPos)) {
                     $fullMatch = $matches[0];
                     $blockName = $matches[2];
                     $params = $matches[3];
-                    
+
                     // 检查这个标签是否在注释中
                     if (strpos($cleanSource, $fullMatch) === false) {
                         $result .= $fullMatch;
                         $offset = $nextPos + strlen($fullMatch);
                         continue;
                     }
-                    
+
                     // 检查是否是自闭合标签（这种情况应该已经被上面处理过了，但为了安全再检查一遍）
                     if (substr($source, $nextPos + strlen($fullMatch), 9) === '{/block}') {
                         // 这种情况应该不会发生，因为我们已经处理过了自闭合标签
@@ -282,7 +281,7 @@ class SmartyDevProcessor
                             'name' => $blockName,
                             'template' => $currentTemplate
                         );
-                        
+
                         $result .= "<!-- START BLOCK: {$blockName} (in: {$currentTemplate}) -->\n" . $fullMatch;
                         $offset = $nextPos + strlen($fullMatch);
                     }
@@ -299,12 +298,12 @@ class SmartyDevProcessor
                     $offset = $nextPos + 8; // '{/block}' 的长度是8
                     continue;
                 }
-                
+
                 if (!empty(self::$blockStack)) {
                     $blockInfo = array_pop(self::$blockStack);
                     $blockName = $blockInfo['name'];
                     $template = $blockInfo['template'];
-                    
+
                     $result .= "{/block}\n<!-- END BLOCK: {$blockName} (in: {$template}) -->";
                 } else {
                     // 没有匹配的开始标签
@@ -313,10 +312,10 @@ class SmartyDevProcessor
                 $offset = $nextPos + 8; // '{/block}' 的长度是8
             }
         }
-        
+
         return $result;
     }
-    
+
     /**
      * 递归处理嵌套的block标签
      */
@@ -324,27 +323,27 @@ class SmartyDevProcessor
     {
         // 使用更精确的正则表达式匹配嵌套的block标签及其内容
         $pattern = '/\{block\s+name=([\'"])([^\'"]+)\1([^\}]*)\}((?:.(?!\{block\s+name=[\'"][^\'"]+[\'"]\}))*.?)\{\/block\}/s';
-        
+
         // 递归处理嵌套的block标签
         return preg_replace_callback($pattern, function ($matches) use ($currentTemplate) {
             $blockName = $matches[2];
             $params = $matches[3];
             $content = $matches[4];
-            
+
             // 检查内容是否为空或只包含空白字符，判断是否为自闭合标签
             $isSelfClosing = (trim($content) === '');
-            
+
             // 创建block节点
             $node = array(
                 'name' => $blockName,
                 'template' => $currentTemplate
             );
-            
+
             // 如果不是自闭合标签，处理嵌套内容
             if (!$isSelfClosing) {
                 // 递归处理内部的block标签
                 $processedContent = self::processNestedBlocks($content, $currentTemplate);
-                
+
                 // 返回带有注释的block结构
                 return "<!-- START BLOCK: {$blockName} (in: {$currentTemplate}) -->\n" .
                        "{block name='{$blockName}'{$params}}" .
@@ -366,7 +365,7 @@ class SmartyDevProcessor
     {
         // 先移除被注释掉的内容，避免处理被注释的hook标签
         $cleanSource = preg_replace('/\{\*.*?\*\}/s', '', $source);
-        
+
         // 匹配hook标签
         $pattern = '/\{hook\s+h=([\'"])([^\'"]+)\1([^\}]*)\}/';
         return preg_replace_callback($pattern, function ($matches) use ($smarty, $cleanSource) {
@@ -375,7 +374,7 @@ class SmartyDevProcessor
                 // 如果在原始source中能找到但在cleanSource中找不到，说明在注释中
                 return $matches[0];
             }
-            
+
             $hookName = $matches[2];
             $params = $matches[3];
 
@@ -396,7 +395,7 @@ class SmartyDevProcessor
     {
         // 先移除被注释掉的内容，避免处理被注释的widget标签
         $cleanSource = preg_replace('/\{\*.*?\*\}/s', '', $source);
-        
+
         // 匹配widget标签
         $pattern = '/\{widget\s+name=([\'"])([^\'"]+)\1([^\}]*)\}/';
         return preg_replace_callback($pattern, function ($matches) use ($smarty, $cleanSource) {
@@ -405,7 +404,7 @@ class SmartyDevProcessor
                 // 如果在原始source中能找到但在cleanSource中找不到，说明在注释中
                 return $matches[0];
             }
-            
+
             $widgetName = $matches[2];
             $params = $matches[3];
 
@@ -419,39 +418,154 @@ class SmartyDevProcessor
         }, $source);
     }
 
+    /**
+     * 处理eval标签注释和结构收集（新增）
+     */
+    protected static function processEvalComments($source, $smarty)
+    {
+        // 先移除被注释掉的内容，避免处理被注释的eval标签
+        $cleanSource = preg_replace('/\{\*.*?\*\}/s', '', $source);
+
+        // 使用逐字符解析的方式处理eval标签，确保正确处理嵌套的大括号或包含字符串
+        $result = '';
+        $offset = 0;
+        $length = strlen($source);
+
+        // 获取当前模板文件的绝对路径
+        $currentTemplate = self::getCurrentTemplatePath($smarty);
+
+        while ($offset < $length) {
+            // 查找eval标签的开始位置
+            $startPos = strpos($source, '{eval', $offset);
+
+            // 如果没有更多eval标签了，添加剩余内容并退出
+            if ($startPos === false) {
+                $result .= substr($source, $offset);
+                break;
+            }
+
+            // 添加当前位置到eval标签之间的内容
+            $result .= substr($source, $offset, $startPos - $offset);
+
+            // 找到标签的结束位置（平衡大括号）
+            $endPos = self::findMatchingBrace($source, $startPos);
+
+            if ($endPos !== false) {
+                $fullTag = substr($source, $startPos, $endPos - $startPos + 1);
+
+                // 检查这个标签是否在注释中
+                if (strpos($cleanSource, $fullTag) === false) {
+                    // 如果在原始source中能找到但在cleanSource中找不到，说明在注释中
+                    $result .= $fullTag;
+                    $offset = $endPos + 1;
+                    continue;
+                }
+
+                // 尝试提取有意义的标识（如 var=... 或代码片段）
+                $label = '';
+                if (preg_match('/var=([\'"])([^\'"]+)\1/', $fullTag, $m)) {
+                    $label = $m[2];
+                } elseif (preg_match('/var=([^\s\}]+)/', $fullTag, $m2)) {
+                    $label = $m2[1];
+                } else {
+                    // 如果没有var参数，使用eval内容的简短摘要（去除{eval 和 }）
+                    $inner = trim(substr($fullTag, 5, -1)); // 去除 {eval 和 }
+                    $inner = preg_replace('/\s+/', ' ', $inner);
+                    $label = substr($inner, 0, 80);
+                    if ($label === '') {
+                        $label = 'eval';
+                    }
+                }
+
+                // 将路径中的反斜杠替换为正斜杠，避免HTML注释中的"--"问题
+                $safeTemplate = str_replace('\\', '/', $currentTemplate);
+
+                // 返回带有注释的eval标签
+                $result .= "<!-- START EVAL: {$label} (in: {$safeTemplate}) -->\n" .
+                    $fullTag .
+                    "\n<!-- END EVAL: {$label} -->";
+
+                $offset = $endPos + 1;
+            } else {
+                // 如果找不到结束位置，添加当前字符并继续
+                $result .= $source[$startPos];
+                $offset = $startPos + 1;
+            }
+        }
+
+        return $result;
+    }
 
     /**
      * 获取当前模板文件的绝对路径
      */
     protected static function getCurrentTemplatePath($smarty)
     {
-        // 尝试多种方法获取当前模板路径
+        // 默认值
         $path = 'unknown_template';
 
-        // 方法1: 通过Smarty的_source属性获取
-        if (isset($smarty->_source) && isset($smarty->_source->filepath)) {
+        // 方法1: 通过 Smarty 的 _source->filepath 获取（最可靠，优先）
+        if (isset($smarty->_source) && isset($smarty->_source->filepath) && $smarty->_source->filepath) {
             $path = $smarty->_source->filepath;
+            return $path;
         }
-        // 方法2: 通过template_resource属性获取
-        elseif (isset($smarty->template_resource)) {
-            $path = $smarty->template_resource;
 
-            // 如果是相对路径，尝试转换为绝对路径
+        // 方法2: 通过 template_resource 获取（需特殊处理 eval: 开头的情况）
+        if (isset($smarty->template_resource) && $smarty->template_resource) {
+            $resource = $smarty->template_resource;
+
+            // 如果是 eval: 开头（Smarty 把内联模板标记为 eval:...），不要直接返回整个内联内容
+            if (strpos($resource, 'eval:') === 0) {
+                // 尝试从继承栈中寻找真实的父模板文件路径（最后一个非空 filepath）
+                if (isset($smarty->_inheritance) && isset($smarty->_inheritance->sources) && !empty($smarty->_inheritance->sources)) {
+                    $sources = $smarty->_inheritance->sources;
+                    // 从后往前找最接近的有 filepath 的源
+                    for ($i = count($sources) - 1; $i >= 0; $i--) {
+                        $src = $sources[$i];
+                        if (is_object($src) && isset($src->filepath) && $src->filepath) {
+                            $parentPath = $src->filepath;
+                            $safeParent = str_replace('\\', '/', $parentPath);
+                            return 'eval (in: ' . $safeParent . ')';
+                        }
+                        // 有些 Smarty 版本可能把 resource 放在 resource 字段
+                        if (is_object($src) && isset($src->resource) && $src->resource && strpos($src->resource, 'eval:') !== 0) {
+                            return 'eval (in: ' . $src->resource . ')';
+                        }
+                    }
+                }
+
+                // 如果没有继承栈信息，尝试从 smarty 对象中找其他线索（兼容性尝试）
+                if (isset($smarty->_current_file) && $smarty->_current_file) {
+                    return 'eval (in: ' . str_replace('\\', '/', $smarty->_current_file) . ')';
+                }
+
+                // 回退：仅返回简短的 eval 标签，避免长 HTML 泄入注释
+                return 'eval';
+            }
+
+            // 非 eval 的 resource，可能是相对路径，尝试解析为绝对路径
+            $path = $resource;
             if (strpos($path, ':/') === false && strpos($path, DIRECTORY_SEPARATOR) !== 0) {
                 $absolutePath = self::findAbsolutePath($path, $smarty);
                 if ($absolutePath !== $path) {
                     $path = $absolutePath;
                 }
             }
+
+            return $path;
         }
-        // 方法3: 通过继承栈获取
-        elseif (
+
+        // 方法3: 通过继承栈获取（作为后备）
+        if (
             isset($smarty->_inheritance) && isset($smarty->_inheritance->sources) &&
             !empty($smarty->_inheritance->sources)
         ) {
             $source = end($smarty->_inheritance->sources);
-            if (isset($source->filepath)) {
-                $path = $source->filepath;
+            if (isset($source->filepath) && $source->filepath) {
+                return $source->filepath;
+            }
+            if (isset($source->resource) && $source->resource) {
+                return $source->resource;
             }
         }
 
@@ -624,8 +738,8 @@ class SmartyDevProcessor
      */
     protected static function buildTemplateStructureTree($html)
     {
-        // 匹配所有模板结构注释
-        preg_match_all('/<!-- (EXTENDS|START INCLUDE|END INCLUDE|START BLOCK|END BLOCK|START MODULE FETCH|END MODULE FETCH|START HOOK|END HOOK|START WIDGET|END WIDGET): (.*?) -->/', $html, $matches, PREG_SET_ORDER);
+        // 匹配所有模板结构注释，新增 START/END EVAL 支持
+        preg_match_all('/<!-- (EXTENDS|START INCLUDE|END INCLUDE|START BLOCK|END BLOCK|START MODULE FETCH|END MODULE FETCH|START HOOK|END HOOK|START WIDGET|END WIDGET|START EVAL|END EVAL): (.*?) -->/', $html, $matches, PREG_SET_ORDER);
 
         $structure = [
             'extends' => [],
@@ -723,7 +837,7 @@ class SmartyDevProcessor
                         array_pop($structure['currentPath']);
                     }
                     break;
-                    
+
                 case 'START HOOK':
                     // 解析hook信息: "hookName (in: templatePath)"
                     if (preg_match('/^([^\(]+) \(in: ([^\)]+)\)$/', $content, $hookMatches)) {
@@ -755,7 +869,7 @@ class SmartyDevProcessor
                         array_pop($structure['currentPath']);
                     }
                     break;
-                    
+
                 case 'START WIDGET':
                     // 解析widget信息: "widgetName (in: templatePath)"
                     if (preg_match('/^([^\(]+) \(in: ([^\)]+)\)$/', $content, $widgetMatches)) {
@@ -783,6 +897,38 @@ class SmartyDevProcessor
                     break;
 
                 case 'END WIDGET':
+                    if (!empty($structure['currentPath'])) {
+                        array_pop($structure['currentPath']);
+                    }
+                    break;
+
+                case 'START EVAL':
+                    // 解析eval信息: "label (in: templatePath)"
+                    if (preg_match('/^([^\(]+) \\(in: ([^\\)]+)\\)$/', $content, $evalMatches)) {
+                        $evalName = trim($evalMatches[1]);
+                        $templatePath = trim($evalMatches[2]);
+
+                        $node = [
+                            'type' => 'eval',
+                            'name' => $evalName,
+                            'template' => $templatePath,
+                            'depth' => count($structure['currentPath']),
+                            'children' => []
+                        ];
+
+                        // 添加到当前路径的最后一个节点的children中
+                        if (!empty($structure['currentPath'])) {
+                            $lastNode = &$structure['currentPath'][count($structure['currentPath']) - 1];
+                            $lastNode['children'][] = $node;
+                            $structure['currentPath'][] = &$lastNode['children'][count($lastNode['children']) - 1];
+                        } else {
+                            $structure['nodes'][] = $node;
+                            $structure['currentPath'][] = &$structure['nodes'][count($structure['nodes']) - 1];
+                        }
+                    }
+                    break;
+
+                case 'END EVAL':
                     if (!empty($structure['currentPath'])) {
                         array_pop($structure['currentPath']);
                     }
@@ -827,6 +973,7 @@ class SmartyDevProcessor
                         <button class="tablink" data-tab="hooks">Hooks🧷</button>
                         <button class="tablink" data-tab="widgets">Widgets⚙️</button>
                         <button class="tablink" data-tab="fetches">模块Fetch📌</button>
+                        <button class="tablink" data-tab="evals">Evals📊</button>
                     </div>
                     
                     <div id="tree" class="tabcontent active">
@@ -862,6 +1009,11 @@ class SmartyDevProcessor
                     <div id="fetches" class="tabcontent">
                         <h3>模块Fetch调用</h3>
                         ' . self::renderModuleFetches($structureTree) . '
+                    </div>
+
+                    <div id="evals" class="tabcontent">
+                        <h3>所有Eval调用</h3>
+                        ' . self::renderAllEvals($structureTree) . '
                     </div>
                 </div>
             </div>
@@ -1026,6 +1178,15 @@ class SmartyDevProcessor
         border-left: 4px solid #ffc107;
         word-break: break-all;
     }
+
+    .eval-item {
+        padding: 10px;
+        margin: 8px 0;
+        background-color: #f3e5f5;
+        border-radius: 4px;
+        border-left: 4px solid #9c27b0;
+        word-break: break-all;
+    }
     
     .structure-tree {
         line-height: 1.6;
@@ -1088,6 +1249,11 @@ class SmartyDevProcessor
     
     .structure-tree .widget-node {
         color: #4a148c;
+        font-weight: 500;
+    }
+
+    .structure-tree .eval-node {
+        color: #6a1b9a;
         font-weight: 500;
     }
     
@@ -1337,7 +1503,7 @@ class SmartyDevProcessor
                 $html .= '<span class="include-node">' . htmlspecialchars(basename($node['path'])) . '</span>';
                 $html .= '<span class="node-details">(' . htmlspecialchars($node['path']) . ')</span>';
                 break;
-                
+
             case 'module_fetch':
                 $html .= '<span class="node-icon">📌</span>';
                 $html .= '<span class="fetch-node">' . htmlspecialchars(basename($node['path'])) . '</span>';
@@ -1349,10 +1515,16 @@ class SmartyDevProcessor
                 $html .= '<span class="hook-node">' . htmlspecialchars($node['name']) . '</span>';
                 $html .= '<span class="node-details">(in: ' . htmlspecialchars($node['template']) . ')</span>';
                 break;
-                
+
             case 'widget':
                 $html .= '<span class="node-icon">⚙️</span>';
                 $html .= '<span class="widget-node">' . htmlspecialchars($node['name']) . '</span>';
+                $html .= '<span class="node-details">(in: ' . htmlspecialchars($node['template']) . ')</span>';
+                break;
+
+            case 'eval':
+                $html .= '<span class="node-icon">📊</span>';
+                $html .= '<span class="eval-node">' . htmlspecialchars($node['name']) . '</span>';
                 $html .= '<span class="node-details">(in: ' . htmlspecialchars($node['template']) . ')</span>';
                 break;
         }
@@ -1517,6 +1689,30 @@ class SmartyDevProcessor
             $html .= '<div class="widget-item">';
             $html .= '<strong>' . htmlspecialchars($widget['name']) . '</strong>';
             $html .= '<div>所在模板: ' . htmlspecialchars($widget['template']) . '</div>';
+            $html .= '</div>';
+        }
+
+        return $html;
+    }
+
+    /**
+     * 渲染所有Evals信息（新增）
+     */
+    protected static function renderAllEvals($structureTree)
+    {
+        // 收集所有eval节点
+        $evals = [];
+        self::collectNodesByType($structureTree, 'eval', $evals);
+
+        if (empty($evals)) {
+            return '<p>没有找到eval调用</p>';
+        }
+
+        $html = '';
+        foreach ($evals as $eval) {
+            $html .= '<div class="eval-item">';
+            $html .= '<strong>' . htmlspecialchars($eval['name']) . '</strong>';
+            $html .= '<div>所在模板: ' . htmlspecialchars($eval['template']) . '</div>';
             $html .= '</div>';
         }
 
