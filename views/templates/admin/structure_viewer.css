@@ -1,0 +1,743 @@
+#smarty-structure-visualizer {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+#smarty-structure-btn {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 56px;
+    height: 56px;
+    background: linear-gradient(135deg, #25b9d7, #2196f3);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(37, 185, 215, 0.3);
+    z-index: 10000;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border: none;
+    outline: none;
+}
+
+#smarty-structure-btn:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 16px rgba(37, 185, 215, 0.4);
+}
+
+#smarty-structure-btn svg {
+    width: 24px;
+    height: 24px;
+}
+
+.smarty-modal {
+    display: none;
+    position: fixed;
+    z-index: 10001;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(2px);
+}
+
+.smarty-modal-content {
+    background-color: #fefefe;
+    margin: 4% auto;
+    padding: 0;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 1200px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    animation: modalAppear 0.3s ease-out;
+}
+
+@keyframes modalAppear {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.smarty-modal-body {
+    padding: 24px;
+    overflow-y: auto;
+    flex-grow: 1;
+}
+
+.smarty-tabs {
+    display: flex;
+    border-bottom: 2px solid #eee;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.tablink {
+    background-color: transparent;
+    border: none;
+    padding: 12px 16px;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-size: 15px;
+    color: #666;
+    border-radius: 6px 6px 0 0;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.tablink:hover {
+    background-color: #f5f5f5;
+    color: #333;
+}
+
+.tablink.active {
+    color: #2196f3;
+    border-bottom: 3px solid #2196f3;
+    background-color: transparent;
+}
+
+.tabcontent {
+    display: none;
+}
+
+.tabcontent.active {
+    display: block;
+}
+
+.tabcontent h3 {
+    margin-top: 0;
+    margin-bottom: 16px;
+    color: #333;
+    font-size: 1.3rem;
+    font-weight: 500;
+}
+
+.template-item {
+    padding: 12px 16px;
+    margin: 8px 0;
+    background-color: #f8f9fa;
+    border-left: 4px solid #25b9d7;
+    border-radius: 4px;
+    word-break: break-all;
+    transition: all 0.2s;
+    overflow-wrap: break-word;
+    position: relative;
+}
+
+.template-item:hover {
+    background-color: #e9f7fe;
+    transform: translateX(3px);
+}
+
+.template-item:hover::after {
+    content: "Include Template";
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: #25b9d7;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    opacity: 0.9;
+}
+
+.block-item {
+    padding: 14px;
+    margin: 10px 0;
+    background-color: #f5f5f5;
+    border-radius: 6px;
+    border-left: 4px solid #32c682;
+    word-break: break-all;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    overflow-wrap: break-word;
+    position: relative;
+}
+
+.block-item:hover {
+    background-color: #e8f5e9;
+}
+
+.block-item:hover::after {
+    content: "Block Definition";
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: #32c682;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    opacity: 0.9;
+}
+
+.hook-item,
+.widget-item {
+    padding: 14px;
+    margin: 10px 0;
+    background-color: #e3f2fd;
+    border-radius: 6px;
+    border-left: 4px solid #2196f3;
+    word-break: break-all;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    overflow-wrap: break-word;
+    position: relative;
+}
+
+.hook-item:hover,
+.widget-item:hover {
+    background-color: #bbdefb;
+}
+
+.hook-item:hover::after {
+    content: "Hook Call";
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: #2196f3;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    opacity: 0.9;
+}
+
+.widget-item:hover::after {
+    content: "Widget Call";
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: #2196f3;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    opacity: 0.9;
+}
+
+.fetch-item {
+    padding: 14px;
+    margin: 10px 0;
+    background-color: #fff8e1;
+    border-radius: 6px;
+    border-left: 4px solid #ffc107;
+    word-break: break-all;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    overflow-wrap: break-word;
+    position: relative;
+}
+
+.fetch-item:hover {
+    background-color: #ffecb3;
+}
+
+.fetch-item:hover::after {
+    content: "Module Fetch";
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: #ffc107;
+    color: #333;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    opacity: 0.9;
+}
+
+.eval-item {
+    padding: 14px;
+    margin: 10px 0;
+    background-color: #f3e5f5;
+    border-radius: 6px;
+    border-left: 4px solid #9c27b0;
+    word-break: break-all;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    overflow-wrap: break-word;
+    position: relative;
+}
+
+.eval-item:hover {
+    background-color: #e1bee7;
+}
+
+.eval-item:hover::after {
+    content: "Eval Call";
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: #9c27b0;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    opacity: 0.9;
+}
+
+.structure-tree {
+    line-height: 1.7;
+}
+
+.structure-tree ul {
+    list-style-type: none;
+    padding-left: 24px;
+    margin: 0;
+}
+
+.structure-tree > ul {
+    padding-left: 0;
+}
+
+.structure-tree li {
+    position: relative;
+    padding: 6px 0 6px 24px;
+}
+
+.structure-tree li:before {
+    content: "";
+    position: absolute;
+    top: 15px;
+    left: 8px;
+    width: 12px;
+    height: 1px;
+    background: #aaa;
+}
+
+.structure-tree li:after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 8px;
+    height: 100%;
+    width: 1px;
+    background: #aaa;
+}
+
+.structure-tree li:last-child:after {
+    height: 15px;
+}
+
+.structure-tree .node-icon {
+    margin-right: 8px;
+    color: #666;
+}
+
+/* 优化节点颜色，使其更加明显和独立区分 */
+.structure-tree .block-node {
+    color: #1976d2;
+    font-weight: 600;
+    background-color: rgba(25, 118, 210, 0.05);
+    padding: 2px 6px;
+    border-radius: 4px;
+    display: inline-block;
+    margin: 2px 0;
+    position: relative;
+}
+
+.structure-tree .include-node {
+    color: #388e3c;
+    font-weight: 600;
+    background-color: rgba(56, 142, 60, 0.05);
+    padding: 2px 6px;
+    border-radius: 4px;
+    display: inline-block;
+    margin: 2px 0;
+    position: relative;
+}
+
+.structure-tree .hook-node {
+    color: #f57c00;
+    font-weight: 600;
+    background-color: rgba(245, 124, 0, 0.05);
+    padding: 2px 6px;
+    border-radius: 4px;
+    display: inline-block;
+    margin: 2px 0;
+    position: relative;
+}
+
+.structure-tree .widget-node {
+    color: #7b1fa2;
+    font-weight: 600;
+    background-color: rgba(123, 31, 162, 0.05);
+    padding: 2px 6px;
+    border-radius: 4px;
+    display: inline-block;
+    margin: 2px 0;
+    position: relative;
+}
+
+.structure-tree .eval-node {
+    color: #c2185b;
+    font-weight: 600;
+    background-color: rgba(194, 24, 91, 0.05);
+    padding: 2px 6px;
+    border-radius: 4px;
+    display: inline-block;
+    margin: 2px 0;
+    position: relative;
+}
+
+.structure-tree .fetch-node {
+    color: #0097a7;
+    font-weight: 600;
+    background-color: rgba(0, 151, 167, 0.05);
+    padding: 2px 6px;
+    border-radius: 4px;
+    display: inline-block;
+    margin: 2px 0;
+    position: relative;
+}
+
+/* 添加悬停提示效果 */
+.structure-tree .block-node:hover::after {
+    content: "Block";
+    position: absolute;
+    left: 100%;
+    top: 0;
+    margin-left: 10px;
+    background: #1976d2;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    white-space: nowrap;
+    z-index: 10;
+}
+
+.structure-tree .include-node:hover::after {
+    content: "Include";
+    position: absolute;
+    left: 100%;
+    top: 0;
+    margin-left: 10px;
+    background: #388e3c;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    white-space: nowrap;
+    z-index: 10;
+}
+
+.structure-tree .hook-node:hover::after {
+    content: "Hook";
+    position: absolute;
+    left: 100%;
+    top: 0;
+    margin-left: 10px;
+    background: #f57c00;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    white-space: nowrap;
+    z-index: 10;
+}
+
+.structure-tree .widget-node:hover::after {
+    content: "Widget";
+    position: absolute;
+    left: 100%;
+    top: 0;
+    margin-left: 10px;
+    background: #7b1fa2;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    white-space: nowrap;
+    z-index: 10;
+}
+
+.structure-tree .eval-node:hover::after {
+    content: "Eval";
+    position: absolute;
+    left: 100%;
+    top: 0;
+    margin-left: 10px;
+    background: #c2185b;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    white-space: nowrap;
+    z-index: 10;
+}
+
+.structure-tree .fetch-node:hover::after {
+    content: "Module Fetch";
+    position: absolute;
+    left: 100%;
+    top: 0;
+    margin-left: 10px;
+    background: #0097a7;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    white-space: nowrap;
+    z-index: 10;
+}
+
+.structure-tree .node-details {
+    font-size: 0.875em;
+    color: #718096;
+    margin-left: 10px;
+    display: inline-block;
+    font-style: italic;
+    word-break: break-all;
+    overflow-wrap: break-word;
+}
+
+.structure-tree .toggle-icon {
+    cursor: pointer;
+    margin-right: 6px;
+    color: #2196f3;
+    user-select: none;
+    font-weight: bold;
+    position: absolute;
+    left: 0;
+    top: 6px;
+}
+
+.structure-tree .collapsed .children {
+    display: none;
+}
+
+/* 平板设备 */
+@media screen and (max-width: 1024px) {
+    .smarty-modal-content {
+        width: 95%;
+        margin: 3% auto;
+        max-height: 94vh;
+    }
+    
+    .smarty-modal-header h2,
+    .smarty-modal-header h4 {
+        font-size: 1.3rem;
+    }
+    
+    .smarty-modal-body {
+        padding: 20px;
+    }
+    
+    .tablink {
+        padding: 10px 14px;
+        font-size: 14px;
+    }
+    
+    .structure-tree ul {
+        padding-left: 20px;
+    }
+    
+    .structure-tree li {
+        padding-left: 20px;
+    }
+}
+
+/* 手机设备 */
+@media screen and (max-width: 768px) {
+    .smarty-modal-content {
+        width: 96%;
+        margin: 2% auto;
+        max-height: 96vh;
+        border-radius: 10px;
+    }
+    
+    .smarty-modal-header {
+        padding: 14px 20px;
+        border-top-left-radius: 10px;
+        border-top-right-radius: 10px;
+    }
+    
+    .smarty-modal-header h2,
+    .smarty-modal-header h4 {
+        font-size: 1.2rem;
+    }
+    
+    .smarty-modal-body {
+        padding: 16px;
+    }
+    
+    .smarty-tabs {
+        flex-wrap: wrap;
+        gap: 0;
+    }
+    
+    .tablink {
+        padding: 10px 12px;
+        font-size: 13px;
+        flex: 1 0 auto;
+        text-align: center;
+        min-width: 30%;
+    }
+    
+    #smarty-structure-btn {
+        width: 50px;
+        height: 50px;
+        bottom: 15px;
+        right: 15px;
+    }
+    
+    .structure-tree ul {
+        padding-left: 18px;
+    }
+    
+    .structure-tree li {
+        padding: 8px 0 8px 20px;
+        font-size: 14px;
+    }
+    
+    .structure-tree li:before {
+        top: 14px;
+    }
+    
+    .structure-tree li:last-child:after {
+        height: 14px;
+    }
+    
+    .structure-tree .node-details {
+        display: block;
+        margin-left: 22px;
+        margin-top: 4px;
+    }
+    
+    .template-item,
+    .block-item,
+    .hook-item,
+    .widget-item,
+    .fetch-item,
+    .eval-item {
+        padding: 12px;
+        font-size: 14px;
+    }
+    
+    /* 移动端隐藏悬停提示 */
+    .template-item:hover::after,
+    .block-item:hover::after,
+    .hook-item:hover::after,
+    .widget-item:hover::after,
+    .fetch-item:hover::after,
+    .eval-item:hover::after,
+    .structure-tree .block-node:hover::after,
+    .structure-tree .include-node:hover::after,
+    .structure-tree .hook-node:hover::after,
+    .structure-tree .widget-node:hover::after,
+    .structure-tree .eval-node:hover::after,
+    .structure-tree .fetch-node:hover::after {
+        display: none;
+    }
+}
+
+/* 小屏手机 */
+@media screen and (max-width: 480px) {
+    #smarty-structure-btn {
+        width: 46px;
+        height: 46px;
+        bottom: 12px;
+        right: 12px;
+    }
+    
+    #smarty-structure-btn svg {
+        width: 20px;
+        height: 20px;
+    }
+    
+    .smarty-modal-content {
+        width: 98%;
+        margin: 1% auto;
+        max-height: 98vh;
+        border-radius: 8px;
+    }
+    
+    .smarty-modal-header {
+        padding: 12px 16px;
+        border-top-left-radius: 8px;
+        border-top-right-radius: 8px;
+    }
+    
+    .smarty-modal-header h2,
+    .smarty-modal-header h4 {
+        font-size: 1.1rem;
+    }
+    
+    .smarty-modal-close {
+        font-size: 24px;
+        width: 26px;
+        height: 26px;
+    }
+    
+    .smarty-modal-body {
+        padding: 14px;
+    }
+    
+    .tablink {
+        padding: 8px 10px;
+        font-size: 12px;
+        min-width: auto;
+    }
+    
+    .tabcontent h3 {
+        font-size: 1.1rem;
+        margin-bottom: 12px;
+    }
+    
+    .structure-tree {
+        line-height: 1.6;
+    }
+    
+    .structure-tree ul {
+        padding-left: 16px;
+    }
+    
+    .structure-tree li {
+        padding: 7px 0 7px 18px;
+        font-size: 13px;
+    }
+    
+    .structure-tree li:before {
+        top: 13px;
+        width: 10px;
+    }
+    
+    .structure-tree li:last-child:after {
+        height: 13px;
+    }
+    
+    .structure-tree .node-details {
+        font-size: 0.8em;
+        margin-left: 18px;
+        word-break: break-word;
+    }
+    
+    .template-item,
+    .block-item,
+    .hook-item,
+    .widget-item,
+    .fetch-item,
+    .eval-item {
+        padding: 10px;
+        margin: 6px 0;
+        font-size: 13px;
+    }
+}

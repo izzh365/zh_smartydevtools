@@ -701,9 +701,6 @@ class SmartyDevProcessor
         return null;
     }
 
-    // 在SmartyDevProcessor.php文件中添加以下方法实现
-
-
     /**
      * 输出过滤器，在页面底部添加模板结构可视化工具（调试版本）
      */
@@ -722,16 +719,37 @@ class SmartyDevProcessor
         // 提取模板注释信息并构建结构树
         $structureTree = self::buildTemplateStructureTree($output);
 
-        // 生成可视化工具HTML
-        $visualizerHtml = self::generateStructureVisualizer($structureTree);
+        // 生成各部分HTML
+        $structure_tree_html = self::renderStructureTree($structureTree);
+        $includes_html = self::renderIncludes($structureTree);
+        $blocks_html = self::renderAllBlocks($structureTree);
+        $hooks_html = self::renderAllHooks($structureTree);
+        $widgets_html = self::renderAllWidgets($structureTree);
+        $fetches_html = self::renderModuleFetches($structureTree);
+        $evals_html = self::renderAllEvals($structureTree);
+
+        // 渲染Smarty视图文件
+        $tplPath = _PS_MODULE_DIR_ . 'zh_smartydevtools/views/templates/admin/structure_viewer.tpl';
+        // 使用 PrestaShop 的 _MODULE_DIR_ 常量，得到 web 路径
+        $moduleDir = _MODULE_DIR_ . 'zh_smartydevtools/';
+        $viewerSmarty = clone $smarty;
+        $viewerSmarty->assign([
+            'structure_tree_html' => $structure_tree_html,
+            'includes_html' => $includes_html,
+            'blocks_html' => $blocks_html,
+            'hooks_html' => $hooks_html,
+            'widgets_html' => $widgets_html,
+            'fetches_html' => $fetches_html,
+            'evals_html' => $evals_html,
+            'module_dir' => $moduleDir,
+        ]);
+        $visualizerHtml = $viewerSmarty->fetch($tplPath);
 
         // 将可视化工具添加到页面底部
         $output = str_replace('</body>', $visualizerHtml . '</body>', $output);
 
         return $output;
     }
-
-    // 在SmartyDevProcessor.php文件中更新相关方法
 
     /**
      * 从HTML输出中提取模板结构信息并构建结构树
@@ -939,7 +957,6 @@ class SmartyDevProcessor
         return $structure;
     }
 
-    // ... existing code ...
     /**
      * 生成模板结构可视化工具的HTML
      */
