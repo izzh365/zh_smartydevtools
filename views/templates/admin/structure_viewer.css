@@ -66,6 +66,7 @@
         opacity: 0;
         transform: translateY(-20px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -303,7 +304,7 @@
     margin: 0;
 }
 
-.structure-tree > ul {
+.structure-tree>ul {
     padding-left: 0;
 }
 
@@ -531,25 +532,25 @@
         margin: 3% auto;
         max-height: 94vh;
     }
-    
+
     .smarty-modal-header h2,
     .smarty-modal-header h4 {
         font-size: 1.3rem;
     }
-    
+
     .smarty-modal-body {
         padding: 20px;
     }
-    
+
     .tablink {
         padding: 10px 14px;
         font-size: 14px;
     }
-    
+
     .structure-tree ul {
         padding-left: 20px;
     }
-    
+
     .structure-tree li {
         padding-left: 20px;
     }
@@ -563,27 +564,27 @@
         max-height: 96vh;
         border-radius: 10px;
     }
-    
+
     .smarty-modal-header {
         padding: 14px 20px;
         border-top-left-radius: 10px;
         border-top-right-radius: 10px;
     }
-    
+
     .smarty-modal-header h2,
     .smarty-modal-header h4 {
         font-size: 1.2rem;
     }
-    
+
     .smarty-modal-body {
         padding: 16px;
     }
-    
+
     .smarty-tabs {
         flex-wrap: wrap;
         gap: 0;
     }
-    
+
     .tablink {
         padding: 10px 12px;
         font-size: 13px;
@@ -591,37 +592,37 @@
         text-align: center;
         min-width: 30%;
     }
-    
+
     #smarty-structure-btn {
         width: 50px;
         height: 50px;
         bottom: 15px;
         right: 15px;
     }
-    
+
     .structure-tree ul {
         padding-left: 18px;
     }
-    
+
     .structure-tree li {
         padding: 8px 0 8px 20px;
         font-size: 14px;
     }
-    
+
     .structure-tree li:before {
         top: 14px;
     }
-    
+
     .structure-tree li:last-child:after {
         height: 14px;
     }
-    
+
     .structure-tree .node-details {
         display: block;
         margin-left: 22px;
         margin-top: 4px;
     }
-    
+
     .template-item,
     .block-item,
     .hook-item,
@@ -631,7 +632,7 @@
         padding: 12px;
         font-size: 14px;
     }
-    
+
     /* 移动端隐藏悬停提示 */
     .template-item:hover::after,
     .block-item:hover::after,
@@ -657,79 +658,79 @@
         bottom: 12px;
         right: 12px;
     }
-    
+
     #smarty-structure-btn svg {
         width: 20px;
         height: 20px;
     }
-    
+
     .smarty-modal-content {
         width: 98%;
         margin: 1% auto;
         max-height: 98vh;
         border-radius: 8px;
     }
-    
+
     .smarty-modal-header {
         padding: 12px 16px;
         border-top-left-radius: 8px;
         border-top-right-radius: 8px;
     }
-    
+
     .smarty-modal-header h2,
     .smarty-modal-header h4 {
         font-size: 1.1rem;
     }
-    
+
     .smarty-modal-close {
         font-size: 24px;
         width: 26px;
         height: 26px;
     }
-    
+
     .smarty-modal-body {
         padding: 14px;
     }
-    
+
     .tablink {
         padding: 8px 10px;
         font-size: 12px;
         min-width: auto;
     }
-    
+
     .tabcontent h3 {
         font-size: 1.1rem;
         margin-bottom: 12px;
     }
-    
+
     .structure-tree {
         line-height: 1.6;
     }
-    
+
     .structure-tree ul {
         padding-left: 16px;
     }
-    
+
     .structure-tree li {
         padding: 7px 0 7px 18px;
         font-size: 13px;
     }
-    
+
     .structure-tree li:before {
         top: 13px;
         width: 10px;
     }
-    
+
     .structure-tree li:last-child:after {
         height: 13px;
     }
-    
+
     .structure-tree .node-details {
         font-size: 0.8em;
         margin-left: 18px;
         word-break: break-word;
     }
-    
+
     .template-item,
     .block-item,
     .hook-item,

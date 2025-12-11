@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Copyright since 2007 PrestaShop SA and Contributors
  * PrestaShop is an International Registered Trademark & Property of PrestaShop SA
@@ -28,7 +29,7 @@ class Zh_smartydevtools extends Module
     {
         $this->name = 'zh_smartydevtools';
         $this->tab = 'administration';
-        $this->version = '1.0.0';
+        $this->version = '2.0.0';
         $this->author = 'zzh';
         $this->need_instance = 0;
         $this->ps_versions_compliancy = [
@@ -46,57 +47,69 @@ class Zh_smartydevtools extends Module
 
     public function install()
     {
-        // 移除调试cookie
-        $this->removeCookie();
+        // 移除所有调试cookie
+        $this->removeAllCookies();
         return parent::install() &&
             $this->registerHook('actionDispatcherBefore') &&
-            Configuration::updateValue('SMARTY_DEV_TOOLS_ENABLED', 1) &&
-            Configuration::updateValue('SMARTY_DEV_TOOLS_TEMPLATE_VIEWER', 0); // 默认关闭模板结构分析工具
+            Configuration::updateValue('SMARTY_DEV_TOOLS_ENABLED', 1);
     }
 
     public function uninstall()
     {
-        // 移除调试cookie
-        $this->removeCookie();
+        // 移除所有调试cookie
+        $this->removeAllCookies();
         // 清除Smarty缓存
         $this->clearSmartyCache();
         return Configuration::deleteByName('SMARTY_DEV_TOOLS_ENABLED') &&
-            Configuration::deleteByName('SMARTY_DEV_TOOLS_TEMPLATE_VIEWER') && // 删除新添加的配置项
             parent::uninstall();
     }
 
     public function hookActionDispatcherBefore($params)
     {
-        // 只在启用模块且不在后台时启用，并检查cookie开关
-        if (!defined('_PS_ADMIN_DIR_') && Configuration::get('SMARTY_DEV_TOOLS_ENABLED') && isset($_COOKIE['smarty_debug']) && $_COOKIE['smarty_debug'] == 1) {
+        // 只在启用模块且不在后台时启用
+        if (!defined('_PS_ADMIN_DIR_') && Configuration::get('SMARTY_DEV_TOOLS_ENABLED')) {
+            // 加载核心处理器类 (自动加载 TagProcessorFactory 和 StructureVisualizer)
             require_once _PS_MODULE_DIR_ . $this->name . '/classes/SmartyDevProcessor.php';
-            
+
             global $smarty;
-            $smarty->registerFilter('pre', array('SmartyDevProcessor', 'processDevComments'));
-            
-            // 仅在启用模板结构分析工具时注册输出过滤器
-            if (Configuration::get('SMARTY_DEV_TOOLS_TEMPLATE_VIEWER')) {
+
+            // 检查元素注释开关 - 从配置读取并检查cookie
+            $showComments = Configuration::get('SMARTY_SHOW_COMMENTS') &&
+                isset($_COOKIE['smarty_show_comments']) &&
+                $_COOKIE['smarty_show_comments'] == '1';
+
+            if ($showComments) {
+                // 注册预编译过滤器 (添加开发注释)
+                $smarty->registerFilter('pre', array('SmartyDevProcessor', 'processDevComments'));
+
+                // 注册模块资源处理器
+                $this->registerModuleResourceWithComments($smarty);
+            }
+
+            // 检查结构树按钮开关 - 从配置读取并检查cookie
+            $showViewer = Configuration::get('SMARTY_SHOW_VIEWER') &&
+                isset($_COOKIE['smarty_show_viewer']) &&
+                $_COOKIE['smarty_show_viewer'] == '1';
+
+            if ($showViewer) {
                 $smarty->registerFilter('output', array('SmartyDevProcessor', 'addTemplateStructureViewer'));
             }
-            
-            $this->registerModuleResourceWithComments($smarty);
         }
     }
-    
     /**
      * 注册带注释的模块资源处理器
      */
     protected function registerModuleResourceWithComments($smarty)
     {
         require_once _PS_MODULE_DIR_ . $this->name . '/classes/SmartyResourceModuleWithComments.php';
-        
+
         // 获取当前注册的模块资源路径
-        $module_resources = array('theme' => _PS_THEME_DIR_.'modules/');
+        $module_resources = array('theme' => _PS_THEME_DIR_ . 'modules/');
         if (_PS_PARENT_THEME_DIR_ !== '') {
-            $module_resources['parent'] = _PS_PARENT_THEME_DIR_.'modules/';
+            $module_resources['parent'] = _PS_PARENT_THEME_DIR_ . 'modules/';
         }
         $module_resources['modules'] = _PS_MODULE_DIR_;
-        
+
         // 注册带注释的模块资源
         $smarty->registerResource('module', new SmartyResourceModuleWithComments($module_resources));
     }
@@ -105,34 +118,53 @@ class Zh_smartydevtools extends Module
     {
         $output = null;
 
-        if (Tools::isSubmit('set_debug_cookie')) {
-            // 设置调试cookie
-            $this->setCookie();
-            $output .= $this->displayConfirmation($this->l('Debug cookie has been set. Refresh the frontend page to see the changes.'));
-        } elseif (Tools::isSubmit('remove_debug_cookie')) {
-            // 移除调试cookie
-            $this->removeCookie();
-            $output .= $this->displayConfirmation($this->l('Debug cookie has been removed. Refresh the frontend page to see the changes.'));
-        } elseif (Tools::isSubmit('submit' . $this->name)) {
+        if (Tools::isSubmit('submit' . $this->name)) {
             $enabled = (int)Tools::getValue('SMARTY_DEV_TOOLS_ENABLED');
-            $templateViewer = (int)Tools::getValue('SMARTY_DEV_TOOLS_TEMPLATE_VIEWER');
-            
-            Configuration::updateValue('SMARTY_DEV_TOOLS_ENABLED', $enabled);
-            Configuration::updateValue('SMARTY_DEV_TOOLS_TEMPLATE_VIEWER', $templateViewer);
+            $showComments = (int)Tools::getValue('SMARTY_SHOW_COMMENTS');
+            $showViewer = (int)Tools::getValue('SMARTY_SHOW_VIEWER');
 
-            if(!$enabled){
-                // 移除调试cookie
-                $this->removeCookie();
+            // 依赖关系处理: 如果开启结构树,自动开启元素注释
+            if ($showViewer && !$showComments) {
+                $showComments = 1;
+                $output .= $this->displayWarning($this->l('Element Comments has been automatically enabled because Structure Tree Viewer requires it.'));
             }
 
-            $output .= $this->displayConfirmation($this->l('Settings updated'));
+            // 依赖关系处理: 如果关闭元素注释,自动关闭结构树
+            if (!$showComments && $showViewer) {
+                $showViewer = 0;
+                $output .= $this->displayWarning($this->l('Structure Tree Viewer has been automatically disabled because Element Comments is required.'));
+            }
+
+            // 只保存总开关到数据库
+            Configuration::updateValue('SMARTY_DEV_TOOLS_ENABLED', $enabled);
+
+            // 根据总开关状态设置cookie(仅影响当前浏览器)
+            if ($enabled) {
+                // 总开关开启时,根据用户选择设置cookie
+                if ($showComments) {
+                    $this->setCookie('smarty_show_comments');
+                } else {
+                    $this->removeCookie('smarty_show_comments');
+                }
+
+                if ($showViewer) {
+                    $this->setCookie('smarty_show_viewer');
+                } else {
+                    $this->removeCookie('smarty_show_viewer');
+                }
+            } else {
+                // 总开关关闭时移除所有cookie
+                $this->removeAllCookies();
+            }
+
+            $output .= $this->displayConfirmation($this->l('Settings updated (affects only your browser)'));
+
+            // 清除Smarty缓存
+            $this->clearSmartyCache();
         }
-        // 清除Smarty缓存
-        $this->clearSmartyCache();
 
         return $output . $this->renderForm();
     }
-
     /**
      * 清除Smarty缓存
      */
@@ -140,13 +172,13 @@ class Zh_smartydevtools extends Module
     {
         // 清除编译模板
         Tools::clearSmartyCache();
-        
+
         // 清除缓存文件
         $cache_dirs = array(
             _PS_CACHE_DIR_ . 'smarty/compile/',
             _PS_CACHE_DIR_ . 'smarty/cache/',
         );
-        
+
         foreach ($cache_dirs as $dir) {
             if (is_dir($dir)) {
                 foreach (scandir($dir) as $file) {
@@ -160,7 +192,7 @@ class Zh_smartydevtools extends Module
                 }
             }
         }
-        
+
         // 如果启用了OPCache，也需要清除
         if (function_exists('opcache_reset')) {
             opcache_reset();
@@ -197,10 +229,29 @@ class Zh_smartydevtools extends Module
                     ],
                     [
                         'type' => 'switch',
-                        'label' => $this->l('Enable Template Structure Viewer'),
-                        'name' => 'SMARTY_DEV_TOOLS_TEMPLATE_VIEWER',
+                        'label' => $this->l('Element Comments'),
+                        'name' => 'SMARTY_SHOW_COMMENTS',
                         'is_bool' => true,
-                        'desc' => $this->l('Display the template structure viewer button at the bottom of pages.'),
+                        'desc' => $this->l('Show HTML comments in page source (<!-- START HOOK: ... -->). Affects only browsers with cookie set.'),
+                        'values' => [
+                            [
+                                'id' => 'comments_on',
+                                'value' => 1,
+                                'label' => $this->l('Enabled')
+                            ],
+                            [
+                                'id' => 'comments_off',
+                                'value' => 0,
+                                'label' => $this->l('Disabled')
+                            ]
+                        ],
+                    ],
+                    [
+                        'type' => 'switch',
+                        'label' => $this->l('Structure Tree Viewer'),
+                        'name' => 'SMARTY_SHOW_VIEWER',
+                        'is_bool' => true,
+                        'desc' => $this->l('Display the structure tree viewer button at the bottom of pages. Note: Requires Element Comments to be enabled. Affects only browsers with cookie set.'),
                         'values' => [
                             [
                                 'id' => 'viewer_on',
@@ -213,31 +264,6 @@ class Zh_smartydevtools extends Module
                                 'label' => $this->l('Disabled')
                             ]
                         ],
-                    ],
-                    [
-                        'type' => 'html',
-                        'name' => 'cookie_buttons',
-                        'html_content' => '
-                            <div class="form-group">
-                                <label class="control-label col-lg-3">' . $this->l('Debug Cookie') . '</label>
-                                <div class="col-lg-9">
-                                    <div class="row">
-                                        <div class="col-lg-4">
-                                            <button type="submit" name="set_debug_cookie" class="btn btn-default">
-                                                <i class="icon-plus"></i> ' . $this->l('Set Debug Cookie') . '
-                                            </button>
-                                            <p class="help-block">' . $this->l('Sets a cookie in your browser to enable debugging tools.') . '</p>
-                                        </div>
-                                        <div class="col-lg-4">
-                                            <button type="submit" name="remove_debug_cookie" class="btn btn-default">
-                                                <i class="icon-trash"></i> ' . $this->l('Remove Debug Cookie') . '
-                                            </button>
-                                            <p class="help-block">' . $this->l('Removes the debug cookie from your browser.') . '</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        ',
                     ],
                     [
                         'type' => 'html',
@@ -265,6 +291,23 @@ class Zh_smartydevtools extends Module
                                                 showSuccessMessage("' . $this->l('Smarty cache cleared successfully') . '");
                                             }
                                         });
+                                    });
+
+                                    // 依赖关系处理: Structure Tree Viewer 开启时自动开启 Element Comments
+                                    // PrestaShop switch 控件使用 radio button,需要监听 label 的 click 事件
+                                    $("input[name=SMARTY_SHOW_VIEWER]").on("change", function() {
+                                        if ($(this).val() == "1" && $(this).is(":checked")) {
+                                            // 自动开启 Element Comments
+                                            $("#comments_on").prop("checked", true).click();
+                                        }
+                                    });
+
+                                    // 依赖关系处理: Element Comments 关闭时自动关闭 Structure Tree Viewer
+                                    $("input[name=SMARTY_SHOW_COMMENTS]").on("change", function() {
+                                        if ($(this).val() == "0" && $(this).is(":checked")) {
+                                            // 自动关闭 Structure Tree Viewer
+                                            $("#viewer_off").prop("checked", true).click();
+                                        }
                                     });
                                 });
                             </script>
@@ -299,14 +342,26 @@ class Zh_smartydevtools extends Module
 
     public function getConfigFieldsValues()
     {
+        $enabled = Tools::getValue(
+            'SMARTY_DEV_TOOLS_ENABLED',
+            Configuration::get('SMARTY_DEV_TOOLS_ENABLED')
+        );
+
         return [
-            'SMARTY_DEV_TOOLS_ENABLED' => Tools::getValue('SMARTY_DEV_TOOLS_ENABLED', 
-                Configuration::get('SMARTY_DEV_TOOLS_ENABLED')),
-            'SMARTY_DEV_TOOLS_TEMPLATE_VIEWER' => Tools::getValue('SMARTY_DEV_TOOLS_TEMPLATE_VIEWER',
-                Configuration::get('SMARTY_DEV_TOOLS_TEMPLATE_VIEWER')),
+            'SMARTY_DEV_TOOLS_ENABLED' => $enabled,
+            // 从当前浏览器Cookie读取状态(仅影响当前浏览器)
+            // 如果总开关关闭,则强制显示为关闭状态
+            'SMARTY_SHOW_COMMENTS' => $enabled ? Tools::getValue(
+                'SMARTY_SHOW_COMMENTS',
+                (isset($_COOKIE['smarty_show_comments']) && $_COOKIE['smarty_show_comments'] == '1') ? 1 : 0
+            ) : 0,
+            'SMARTY_SHOW_VIEWER' => $enabled ? Tools::getValue(
+                'SMARTY_SHOW_VIEWER',
+                (isset($_COOKIE['smarty_show_viewer']) && $_COOKIE['smarty_show_viewer'] == '1') ? 1 : 0
+            ) : 0,
         ];
     }
-    
+
     /**
      * AJAX方法：清除Smarty缓存
      */
@@ -316,15 +371,36 @@ class Zh_smartydevtools extends Module
         die(json_encode(['success' => true, 'message' => $this->l('Smarty cache cleared successfully')]));
     }
 
-    private function removeCookie()
+    /**
+     * 设置指定的cookie
+     */
+    private function setCookie($cookieName)
     {
-        // 移除调试cookie
-        setcookie('smarty_debug', '', time() - 28800, '/', '', false, true);
+        setcookie($cookieName, '1', time() + 28800, '/', '', false, true);
+        $_COOKIE[$cookieName] = '1'; // 立即更新当前请求的$_COOKIE
     }
 
-    private function setCookie()
-    { 
-        // 设置调试cookie
-        setcookie('smarty_debug', '1', time() + 28800, '/', '', false, true);
+    /**
+     * 移除指定的cookie
+     */
+    private function removeCookie($cookieName)
+    {
+        setcookie($cookieName, '', time() - 3600, '/', '', false, true);
+        if (isset($_COOKIE[$cookieName])) {
+            unset($_COOKIE[$cookieName]);
+        }
+    }
+    /**
+     * 移除所有调试cookie
+     */
+    private function removeAllCookies()
+    {
+        $cookies = ['smarty_show_viewer', 'smarty_show_comments'];
+        foreach ($cookies as $cookie) {
+            setcookie($cookie, '', time() - 3600, '/', '', false, true);
+            if (isset($_COOKIE[$cookie])) {
+                unset($_COOKIE[$cookie]);
+            }
+        }
     }
 }

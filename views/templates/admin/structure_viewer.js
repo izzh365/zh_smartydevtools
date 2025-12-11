@@ -11,7 +11,7 @@ document.addEventListener("DOMContentLoaded", function() {
     var tablinks = document.querySelectorAll(".tablink");
     var tabcontents = document.querySelectorAll(".tabcontent");
     var modalContent = document.querySelector(".smarty-modal-content");
-    
+
     // 打开模态框
     btn.addEventListener("click", function() {
         modal.style.display = "block";
@@ -20,7 +20,7 @@ document.addEventListener("DOMContentLoaded", function() {
         // 添加打开类以支持动画
         modal.classList.add("open");
     });
-    
+
     // 关闭模态框
     if (closeBtn) {
         closeBtn.addEventListener("click", function() {
@@ -31,7 +31,7 @@ document.addEventListener("DOMContentLoaded", function() {
             modal.classList.remove("open");
         });
     }
-    
+
     // 点击外部关闭模态框
     window.addEventListener("click", function(event) {
         if (event.target == modal || (event.target == modalContent && !modalContent.contains(event.target))) {
@@ -42,7 +42,7 @@ document.addEventListener("DOMContentLoaded", function() {
             modal.classList.remove("open");
         }
     });
-    
+
     // ESC键关闭模态框
     document.addEventListener("keydown", function(event) {
         if (event.key === "Escape" && modal.style.display === "block") {
@@ -53,12 +53,12 @@ document.addEventListener("DOMContentLoaded", function() {
             modal.classList.remove("open");
         }
     });
-    
+
     // 标签切换
     tablinks.forEach(function(tablink) {
         tablink.addEventListener("click", function() {
             var tabName = this.getAttribute("data-tab");
-            
+
             // 移除所有active类
             tablinks.forEach(function(tl) {
                 tl.classList.remove("active");
@@ -66,13 +66,13 @@ document.addEventListener("DOMContentLoaded", function() {
             tabcontents.forEach(function(tc) {
                 tc.classList.remove("active");
             });
-            
+
             // 添加active类到当前标签
             this.classList.add("active");
             document.getElementById(tabName).classList.add("active");
         });
     });
-    
+
     // 树形结构折叠/展开功能
     document.addEventListener("click", function(e) {
         if (e.target.classList.contains("toggle-icon")) {
@@ -83,11 +83,11 @@ document.addEventListener("DOMContentLoaded", function() {
             }
         }
     });
-    
+
     // 支持键盘导航
     if (modal) {
         var focusableElements = modal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
-        var firstFocusableElement = focusableElements[0];  
+        var firstFocusableElement = focusableElements[0];
         var lastFocusableElement = focusableElements[focusableElements.length - 1];
 
         // 在模态框内限制焦点
@@ -107,7 +107,7 @@ document.addEventListener("DOMContentLoaded", function() {
             }
         });
     }
-    
+
     // 监听窗口大小变化，确保模态框在窗口大小变化时保持居中
     window.addEventListener("resize", function() {
         if (modal && modal.style.display === "block") {

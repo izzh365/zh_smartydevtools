@@ -35,7 +35,7 @@
                 <div class="smarty-tabs">
                     <button class="tablink active" data-tab="tree">结构树</button>
                 </div>
-                
+
                 <div id="tree" class="tabcontent active">
                     <h3>模板结构树</h3>
                     {$structure_tree_html nofilter}
