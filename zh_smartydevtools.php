@@ -66,16 +66,29 @@ class Zh_smartydevtools extends Module
 
     public function hookActionDispatcherBefore($params)
     {
+        // 检查总开关状态
+        $enabled = Configuration::get('SMARTY_DEV_TOOLS_ENABLED');
+
+        // 如果总开关关闭，但浏览器仍有调试Cookie，自动清理（处理多浏览器场景）
+        if (!$enabled) {
+            $hasCookies = (isset($_COOKIE['smarty_show_comments']) && $_COOKIE['smarty_show_comments'] == '1') ||
+                (isset($_COOKIE['smarty_show_viewer']) && $_COOKIE['smarty_show_viewer'] == '1');
+
+            if ($hasCookies) {
+                $this->removeAllCookies();
+            }
+            return; // 总开关关闭，直接返回
+        }
+
         // 只在启用模块且不在后台时启用
-        if (!defined('_PS_ADMIN_DIR_') && Configuration::get('SMARTY_DEV_TOOLS_ENABLED')) {
+        if (!defined('_PS_ADMIN_DIR_')) {
             // 加载核心处理器类 (自动加载 TagProcessorFactory 和 StructureVisualizer)
             require_once _PS_MODULE_DIR_ . $this->name . '/classes/SmartyDevProcessor.php';
 
             global $smarty;
 
-            // 检查元素注释开关 - 从配置读取并检查cookie
-            $showComments = Configuration::get('SMARTY_SHOW_COMMENTS') &&
-                isset($_COOKIE['smarty_show_comments']) &&
+            // 检查元素注释开关 - 仅基于当前浏览器 Cookie
+            $showComments = isset($_COOKIE['smarty_show_comments']) &&
                 $_COOKIE['smarty_show_comments'] == '1';
 
             if ($showComments) {
@@ -86,9 +99,8 @@ class Zh_smartydevtools extends Module
                 $this->registerModuleResourceWithComments($smarty);
             }
 
-            // 检查结构树按钮开关 - 从配置读取并检查cookie
-            $showViewer = Configuration::get('SMARTY_SHOW_VIEWER') &&
-                isset($_COOKIE['smarty_show_viewer']) &&
+            // 检查结构树按钮开关 - 仅基于当前浏览器 Cookie
+            $showViewer = isset($_COOKIE['smarty_show_viewer']) &&
                 $_COOKIE['smarty_show_viewer'] == '1';
 
             if ($showViewer) {
@@ -116,54 +128,7 @@ class Zh_smartydevtools extends Module
 
     public function getContent()
     {
-        $output = null;
-
-        if (Tools::isSubmit('submit' . $this->name)) {
-            $enabled = (int)Tools::getValue('SMARTY_DEV_TOOLS_ENABLED');
-            $showComments = (int)Tools::getValue('SMARTY_SHOW_COMMENTS');
-            $showViewer = (int)Tools::getValue('SMARTY_SHOW_VIEWER');
-
-            // 依赖关系处理: 如果开启结构树,自动开启元素注释
-            if ($showViewer && !$showComments) {
-                $showComments = 1;
-                $output .= $this->displayWarning($this->l('Element Comments has been automatically enabled because Structure Tree Viewer requires it.'));
-            }
-
-            // 依赖关系处理: 如果关闭元素注释,自动关闭结构树
-            if (!$showComments && $showViewer) {
-                $showViewer = 0;
-                $output .= $this->displayWarning($this->l('Structure Tree Viewer has been automatically disabled because Element Comments is required.'));
-            }
-
-            // 只保存总开关到数据库
-            Configuration::updateValue('SMARTY_DEV_TOOLS_ENABLED', $enabled);
-
-            // 根据总开关状态设置cookie(仅影响当前浏览器)
-            if ($enabled) {
-                // 总开关开启时,根据用户选择设置cookie
-                if ($showComments) {
-                    $this->setCookie('smarty_show_comments');
-                } else {
-                    $this->removeCookie('smarty_show_comments');
-                }
-
-                if ($showViewer) {
-                    $this->setCookie('smarty_show_viewer');
-                } else {
-                    $this->removeCookie('smarty_show_viewer');
-                }
-            } else {
-                // 总开关关闭时移除所有cookie
-                $this->removeAllCookies();
-            }
-
-            $output .= $this->displayConfirmation($this->l('Settings updated (affects only your browser)'));
-
-            // 清除Smarty缓存
-            $this->clearSmartyCache();
-        }
-
-        return $output . $this->renderForm();
+        return $this->renderForm();
     }
     /**
      * 清除Smarty缓存
@@ -201,165 +166,134 @@ class Zh_smartydevtools extends Module
 
     public function renderForm()
     {
-        $fields_form = [
-            'form' => [
-                'legend' => [
-                    'title' => $this->l('Settings'),
-                    'icon' => 'icon-cogs'
-                ],
-                'input' => [
-                    [
-                        'type' => 'switch',
-                        'label' => $this->l('Enable Smarty Dev Tools'),
-                        'name' => 'SMARTY_DEV_TOOLS_ENABLED',
-                        'is_bool' => true,
-                        'desc' => $this->l('Enable development tools for Smarty templates.'),
-                        'values' => [
-                            [
-                                'id' => 'active_on',
-                                'value' => 1,
-                                'label' => $this->l('Enabled')
-                            ],
-                            [
-                                'id' => 'active_off',
-                                'value' => 0,
-                                'label' => $this->l('Disabled')
-                            ]
-                        ],
-                    ],
-                    [
-                        'type' => 'switch',
-                        'label' => $this->l('Element Comments'),
-                        'name' => 'SMARTY_SHOW_COMMENTS',
-                        'is_bool' => true,
-                        'desc' => $this->l('Show HTML comments in page source (<!-- START HOOK: ... -->). Affects only browsers with cookie set.'),
-                        'values' => [
-                            [
-                                'id' => 'comments_on',
-                                'value' => 1,
-                                'label' => $this->l('Enabled')
-                            ],
-                            [
-                                'id' => 'comments_off',
-                                'value' => 0,
-                                'label' => $this->l('Disabled')
-                            ]
-                        ],
-                    ],
-                    [
-                        'type' => 'switch',
-                        'label' => $this->l('Structure Tree Viewer'),
-                        'name' => 'SMARTY_SHOW_VIEWER',
-                        'is_bool' => true,
-                        'desc' => $this->l('Display the structure tree viewer button at the bottom of pages. Note: Requires Element Comments to be enabled. Affects only browsers with cookie set.'),
-                        'values' => [
-                            [
-                                'id' => 'viewer_on',
-                                'value' => 1,
-                                'label' => $this->l('Enabled')
-                            ],
-                            [
-                                'id' => 'viewer_off',
-                                'value' => 0,
-                                'label' => $this->l('Disabled')
-                            ]
-                        ],
-                    ],
-                    [
-                        'type' => 'html',
-                        'name' => 'clear_cache_html',
-                        'html_content' => '
-                            <div class="form-group">
-                                <div class="col-lg-9 col-lg-offset-3">
-                                    <button type="button" id="clear-smarty-cache" class="btn btn-default">
-                                        <i class="icon-refresh"></i> ' . $this->l('Clear Smarty Cache') . '
-                                    </button>
-                                    <p class="help-block">' . $this->l('Clear Smarty cache if changes are not reflected immediately.') . '</p>
-                                </div>
-                            </div>
-                            <script>
-                                $(document).ready(function() {
-                                    $("#clear-smarty-cache").click(function() {
-                                        $.ajax({
-                                            url: "' . $this->context->link->getAdminLink('AdminModules', true) . '",
-                                            data: {
-                                                configure: "' . $this->name . '",
-                                                ajax: 1,
-                                                action: "clearSmartyCache"
-                                            },
-                                            success: function(response) {
-                                                showSuccessMessage("' . $this->l('Smarty cache cleared successfully') . '");
-                                            }
-                                        });
-                                    });
+        $enabled = (int) Configuration::get('SMARTY_DEV_TOOLS_ENABLED');
+        $showComments = $enabled && isset($_COOKIE['smarty_show_comments']) && $_COOKIE['smarty_show_comments'] == '1';
+        $showViewer = $enabled && isset($_COOKIE['smarty_show_viewer']) && $_COOKIE['smarty_show_viewer'] == '1';
 
-                                    // 依赖关系处理: Structure Tree Viewer 开启时自动开启 Element Comments
-                                    // PrestaShop switch 控件使用 radio button,需要监听 label 的 click 事件
-                                    $("input[name=SMARTY_SHOW_VIEWER]").on("change", function() {
-                                        if ($(this).val() == "1" && $(this).is(":checked")) {
-                                            // 自动开启 Element Comments
-                                            $("#comments_on").prop("checked", true).click();
-                                        }
-                                    });
+        $this->context->smarty->assign([
+            'enabled' => $enabled,
+            'show_comments' => $showComments,
+            'show_viewer' => $showViewer,
+            'ajax_url' => $this->context->link->getAdminLink('AdminModules', true),
+            'module_name' => $this->name,
+            'module_dir' => $this->_path,
+        ]);
 
-                                    // 依赖关系处理: Element Comments 关闭时自动关闭 Structure Tree Viewer
-                                    $("input[name=SMARTY_SHOW_COMMENTS]").on("change", function() {
-                                        if ($(this).val() == "0" && $(this).is(":checked")) {
-                                            // 自动关闭 Structure Tree Viewer
-                                            $("#viewer_off").prop("checked", true).click();
-                                        }
-                                    });
-                                });
-                            </script>
-                        ',
-                    ],
-                ],
-                'submit' => [
-                    'title' => $this->l('Save')
-                ]
-            ],
-        ];
-
-        $helper = new HelperForm();
-        $helper->show_toolbar = false;
-        $helper->table = $this->table;
-        $helper->module = $this;
-        $helper->default_form_language = $this->context->language->id;
-        $helper->allow_employee_form_lang = Configuration::get('PS_BO_ALLOW_EMPLOYEE_FORM_LANG', 0);
-        $helper->identifier = $this->identifier;
-        $helper->submit_action = 'submit' . $this->name;
-        $helper->currentIndex = $this->context->link->getAdminLink('AdminModules', false)
-            . '&configure=' . $this->name . '&tab_module=' . $this->tab . '&module_name=' . $this->name;
-        $helper->token = Tools::getAdminTokenLite('AdminModules');
-        $helper->tpl_vars = [
-            'fields_value' => $this->getConfigFieldsValues(),
-            'languages' => $this->context->controller->getLanguages(),
-            'id_language' => $this->context->language->id,
-        ];
-
-        return $helper->generateForm([$fields_form]);
+        return $this->display(__FILE__, 'views/templates/admin/configure.tpl');
     }
 
-    public function getConfigFieldsValues()
+    /**
+     * AJAX方法：切换开关
+     */
+    public function ajaxProcessToggleSwitch()
     {
-        $enabled = Tools::getValue(
-            'SMARTY_DEV_TOOLS_ENABLED',
-            Configuration::get('SMARTY_DEV_TOOLS_ENABLED')
-        );
+        $switchType = Tools::getValue('switch');
+        $state = (int) Tools::getValue('state');
+        $response = ['success' => false];
 
-        return [
-            'SMARTY_DEV_TOOLS_ENABLED' => $enabled,
-            // 从当前浏览器Cookie读取状态(仅影响当前浏览器)
-            // 如果总开关关闭,则强制显示为关闭状态
-            'SMARTY_SHOW_COMMENTS' => $enabled ? Tools::getValue(
-                'SMARTY_SHOW_COMMENTS',
-                (isset($_COOKIE['smarty_show_comments']) && $_COOKIE['smarty_show_comments'] == '1') ? 1 : 0
-            ) : 0,
-            'SMARTY_SHOW_VIEWER' => $enabled ? Tools::getValue(
-                'SMARTY_SHOW_VIEWER',
-                (isset($_COOKIE['smarty_show_viewer']) && $_COOKIE['smarty_show_viewer'] == '1') ? 1 : 0
-            ) : 0,
-        ];
+        try {
+            switch ($switchType) {
+                case 'enabled':
+                    Configuration::updateValue('SMARTY_DEV_TOOLS_ENABLED', $state);
+                    if (!$state) {
+                        // 总开关关闭时移除所有cookie
+                        $this->removeAllCookies();
+                        // 联动关闭下方两个开关的UI
+                        $response['linkedToggles'] = [
+                            ['switch' => 'comments', 'state' => false],
+                            ['switch' => 'viewer', 'state' => false]
+                        ];
+                    }
+                    $response['success'] = true;
+                    $response['message'] = $state ?
+                        $this->l('Smarty Dev Tools enabled') :
+                        $this->l('Smarty Dev Tools disabled');
+
+                    // 总开关开启时，viewer的可用状态取决于comments的实际状态
+                    if ($state) {
+                        $commentsCookie = isset($_COOKIE['smarty_show_comments']) && $_COOKIE['smarty_show_comments'] == '1';
+                        $response['disableStates'] = [
+                            'comments' => true,
+                            'viewer' => $commentsCookie  // 只有comments开启时viewer才可用
+                        ];
+                    } else {
+                        $response['disableStates'] = [
+                            'comments' => false,
+                            'viewer' => false
+                        ];
+                    }
+                    break;
+
+                case 'comments':
+                    $enabled = (int) Configuration::get('SMARTY_DEV_TOOLS_ENABLED');
+                    if (!$enabled) {
+                        $response['message'] = $this->l('Please enable Smarty Dev Tools first');
+                        break;
+                    }
+
+                    if ($state) {
+                        $this->setCookie('smarty_show_comments');
+                        // comments开启时，viewer变为可用（但不自动开启）
+                        $response['updateViewerDisabled'] = true;
+                    } else {
+                        $this->removeCookie('smarty_show_comments');
+                        // comments关闭时：
+                        // 1. 联动关闭viewer的cookie
+                        $viewerCookie = isset($_COOKIE['smarty_show_viewer']) && $_COOKIE['smarty_show_viewer'] == '1';
+                        if ($viewerCookie) {
+                            $this->removeCookie('smarty_show_viewer');
+                            $response['linkedToggle'] = [
+                                'switch' => 'viewer',
+                                'state' => false
+                            ];
+                        }
+                        // 2. 禁用viewer开关
+                        $response['updateViewerDisabled'] = false;
+                    }
+                    $response['success'] = true;
+                    $response['message'] = $state ?
+                        $this->l('Element Comments enabled') :
+                        $this->l('Element Comments disabled');
+                    break;
+
+                case 'viewer':
+                    $enabled = (int) Configuration::get('SMARTY_DEV_TOOLS_ENABLED');
+                    if (!$enabled) {
+                        $response['message'] = $this->l('Please enable Smarty Dev Tools first');
+                        break;
+                    }
+
+                    if ($state) {
+                        // viewer开启前检查comments是否已开启（前端已禁用，这里做后端校验）
+                        $commentsCookie = isset($_COOKIE['smarty_show_comments']) && $_COOKIE['smarty_show_comments'] == '1';
+                        if (!$commentsCookie) {
+                            $response['success'] = false;
+                            $response['message'] = $this->l('Please enable Element Comments first');
+                            break;
+                        }
+                        $this->setCookie('smarty_show_viewer');
+                    } else {
+                        $this->removeCookie('smarty_show_viewer');
+                    }
+                    $response['success'] = true;
+                    $response['message'] = $state ?
+                        $this->l('Structure Tree Viewer enabled') :
+                        $this->l('Structure Tree Viewer disabled');
+                    break;
+
+                default:
+                    $response['message'] = $this->l('Invalid switch type');
+            }
+
+            // 清除Smarty缓存使更改立即生效
+            if ($response['success']) {
+                $this->clearSmartyCache();
+            }
+        } catch (Exception $e) {
+            $response['message'] = $e->getMessage();
+        }
+
+        die(json_encode($response));
     }
 
     /**

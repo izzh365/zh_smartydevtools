@@ -26,34 +26,47 @@
 #### 工作流程示例
 
 ```
-场景: 3 个开发人员 A、B、C
+场景: 3 个开发人员 A、B、C 的不同使用方式
 
-1. A 在后台开启 Element Comments
-   → 只在 A 的浏览器设置 Cookie
-   → B、C 看不到任何变化
+1. A 只需要查看 HTML 注释
+   → 开启 Element Comments
+   → Structure Tree Viewer 变为可用,但 A 选择不开启
+   → A 的浏览器: 只看到 HTML 注释,无浮动按钮
 
-2. B 在后台开启 Structure Tree Viewer
-   → 只在 B 的浏览器设置 Cookie
-   → A、C 看不到结构树按钮
+2. B 需要完整的调试功能
+   → 先开启 Element Comments (必须)
+   → 再开启 Structure Tree Viewer (此时才可用)
+   → B 的浏览器: 既有 HTML 注释,也有结构树按钮
 
-3. C 什么都不开启
-   → C 的浏览器没有任何 Cookie
-   → 看到的是纯净的前台页面
+3. C 不需要任何调试功能
+   → 保持所有开关关闭
+   → C 的浏览器: 纯净的前台页面,无任何调试信息
+
+4. 测试完成,快速清理
+   → A、B、C 都关闭总开关
+   → 所有 Cookie 自动删除,后台显示全部关闭
 
 结果: 3 个人互不影响,各自使用自己需要的功能!
 ```
 
 ### 🔄 智能依赖关系
 
-- **开启 Structure Tree Viewer** → 自动开启 Element Comments (前端+后端双重保障)
-- **关闭 Element Comments** → 自动关闭 Structure Tree Viewer (防止无效配置)
-- **关闭总开关** → 自动删除所有 Cookie,后台显示全部关闭
+**前置条件设计**: Element Comments 是 Structure Tree Viewer 的必要前提
 
-### 🎨 统一的 Switch 开关界面
+- **Element Comments 关闭** → Structure Tree Viewer 自动关闭并禁用 (无法开启)
+- **Element Comments 开启** → Structure Tree Viewer 变为可用 (用户可自由选择)
+- **关闭总开关** → 两个子功能同时关闭并禁用,所有 Cookie 自动删除
+- **开启总开关** → Element Comments 可用,但 Structure Tree Viewer 仍需等待 Element Comments 开启
 
-- 所有功能都使用 PrestaShop 原生 switch 控件
-- 统一的交互模式,符合 PrestaShop 管理后台规范
-- 单一 Save 按钮,一次保存所有设置
+**设计理念**: 结构树基于 HTML 注释构建,因此必须先启用注释功能才能显示结构树。这种单向依赖关系确保了功能的逻辑一致性,同时保留了用户的灵活性(可以只用注释不用结构树)。
+
+### 🎨 现代化的 Toggle Switch 界面
+
+- **AJAX 即时生效**: 无需点击 Save 按钮,切换即生效
+- **实时状态同步**: 前后端状态完全同步,UI 准确反映 Cookie 状态
+- **智能联动**: 开关之间自动联动,无需手动调整
+- **防重复提交**: 内置请求锁,避免快速点击导致状态混乱
+- **视觉反馈**: 圆形滑块设计,开/关状态一目了然
 
 ### 🍪 Cookie 生命周期
 
@@ -188,9 +201,36 @@ php bin/console prestashop:module install zh_smartydevtools
 define('_PS_MODE_DEV_', true);
 ```
 
-### 3. 访问任意页面
+### 3. 配置调试功能
 
-访问前台任意页面,右下角会出现浮动按钮:
+访问后台配置页面：**模块 > 模块管理器 > Smarty Dev Tools > 配置**
+
+#### 开关说明
+
+| 开关 | 说明 | 依赖关系 |
+|------|------|---------|
+| **Smarty Dev Tools (总开关)** | 主控开关,控制模块整体启用状态 | 关闭时下方两个开关同时禁用并关闭 |
+| **Element Comments** | 在 HTML 源代码中插入调试注释 | 依赖总开关开启 |
+| **Structure Tree Viewer** | 在前台显示浮动按钮和结构树面板 | 依赖总开关**和** Element Comments 都开启 |
+
+#### 推荐配置流程
+
+```
+步骤 1: 开启总开关
+  ↓
+步骤 2: 开启 Element Comments (此时 Structure Tree Viewer 变为可用)
+  ↓
+步骤 3: 根据需要选择是否开启 Structure Tree Viewer
+  - 只需要 HTML 注释 → 保持关闭
+  - 需要可视化调试 → 开启
+```
+
+### 4. 查看调试信息
+
+访问前台任意页面：
+
+- **仅开启 Element Comments**: 页面 HTML 源代码中包含调试注释,但无可见界面
+- **同时开启 Structure Tree Viewer**: 右下角会出现浮动按钮
 
 ```
 ┌─────────────────────┐
@@ -198,7 +238,7 @@ define('_PS_MODE_DEV_', true);
 └─────────────────────┘
 ```
 
-### 4. 打开调试面板
+### 5. 打开调试面板
 
 点击浮动按钮,弹出模态框显示 7 个标签页:
 
@@ -761,7 +801,8 @@ public static function addTemplateStructureViewer($output, $smarty)
 **可能原因:**
 - 开发模式未启用
 - 模块未激活
-- Cookie 被禁用
+- Structure Tree Viewer 未开启
+- Element Comments 未开启 (前置条件)
 
 **解决方案:**
 
@@ -774,13 +815,28 @@ var_dump(_PS_MODE_DEV_);  // 应该输出 true
 SELECT * FROM ps_module WHERE name = 'zh_smartydevtools';
 // active 字段应为 1
 
-// 3. 检查 Cookie
-// 浏览器控制台执行:
-document.cookie = "smarty_debug=1; path=/";
-// 刷新页面
+// 3. 检查总开关
+SELECT value FROM ps_configuration WHERE name = 'SMARTY_DEV_TOOLS_ENABLED';
+// value 应为 '1'
+
+// 4. 检查 Cookie (浏览器控制台执行)
+document.cookie.split(';').filter(c => c.includes('smarty_show'))
+// 应该看到: smarty_show_comments=1; smarty_show_viewer=1
 ```
 
-### 问题 2: 模板路径显示为 "unknown_template"
+### 问题 2: Structure Tree Viewer 无法开启
+
+**可能原因:**
+- Element Comments 未开启 (必须先开启)
+- 总开关未开启
+
+**解决方案:**
+
+```
+1. 检查总开关是否开启
+2. 检查 Element Comments 是否开启
+3. 按照依赖顺序开启: 总开关 → Element Comments → Structure Tree Viewer
+```
 
 **可能原因:**
 - Smarty 对象缺少路径信息
@@ -808,7 +864,35 @@ public static function getCurrentTemplatePath($smarty)
 }
 ```
 
-### 问题 3: 结构树中缺少某些标签
+### 问题 3: 模板路径显示为 "unknown_template"
+
+**可能原因:**
+- Smarty 对象缺少路径信息
+- 模板是动态生成的 (eval)
+
+**解决方案:**
+
+```php
+// 添加调试日志
+// modules/zh_smartydevtools/classes/Utils/CommonUtils.php
+
+public static function getCurrentTemplatePath($smarty)
+{
+    // 调试: 输出 Smarty 对象信息
+    if (_PS_MODE_DEV_) {
+        $debug = [
+            '_source' => isset($smarty->_source) ? get_object_vars($smarty->_source) : null,
+            'template_resource' => $smarty->template_resource ?? null,
+            '_inheritance' => isset($smarty->_inheritance) ? count($smarty->_inheritance->sources ?? []) : 0,
+        ];
+        error_log("Smarty Path Debug: " . print_r($debug, true));
+    }
+
+    // ... 现有代码
+}
+```
+
+### 问题 4: 结构树中缺少某些标签
 
 **可能原因:**
 - 标签在注释中
@@ -828,7 +912,7 @@ curl http://localhost/your-page | grep -o "<!-- START.*-->" | head -20
 grep -r "getSupportedTags" modules/zh_smartydevtools/classes/Processors/
 ```
 
-### 问题 4: 性能下降
+### 问题 5: 性能下降
 
 **可能原因:**
 - 日志文件过大
@@ -935,20 +1019,24 @@ public static function getCurrentTemplatePath($smarty)
 
 **A:** 可以。界面已做响应式适配,支持手机和平板访问。
 
-### Q4: 如何隐藏浮动按钮?
+### Q4: 为什么 Structure Tree Viewer 无法单独开启?
 
-**A:** 删除 Cookie:
+**A:** 这是设计使然。Structure Tree Viewer 依赖 Element Comments 生成的 HTML 注释来构建结构树，因此必须先开启 Element Comments。这种单向依赖关系确保了功能的逻辑一致性。
+
+### Q5: 如何隐藏浮动按钮?
+
+**A:** 在后台配置中关闭 Structure Tree Viewer 开关，或删除对应的 Cookie:
 
 ```javascript
 // 浏览器控制台执行
-document.cookie = "smarty_debug=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+document.cookie = "smarty_show_viewer=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
 ```
 
-### Q5: 支持多语言吗?
+### Q7: 支持多语言吗?
 
 **A:** 当前为英文界面。如需中文化,修改模板文件中的文本即可。
 
-### Q6: 模块会修改 Smarty 核心吗?
+### Q8: 模块会修改 Smarty 核心吗?
 
 **A:** 不会。模块仅使用 Smarty 的 prefilter 和 outputfilter 钩子,不修改核心代码。
 
@@ -1073,5 +1161,23 @@ class YourClass
 
 ---
 
-**最后更新:** 2025-12-10
+## 📝 更新日志
+
+### v2.0.0 (2025-12-11)
+
+**重大更新:**
+- ✨ 改进联动逻辑: Element Comments 作为 Structure Tree Viewer 的前置条件
+- 🎨 AJAX 即时生效: 移除 Save 按钮,切换开关即生效
+- 🔒 智能状态同步: 前后端状态完全同步,UI 准确反映 Cookie 状态
+- 🛡️ 防重复提交: 内置请求锁机制
+- 💾 Cookie 管理优化: 8小时自动过期,总开关关闭时自动清理
+
+**架构优化:**
+- 重构为 AJAX 模式,提升用户体验
+- 优化联动逻辑,符合依赖关系直觉
+- 改进错误处理和用户提示
+
+---
+
+**最后更新:** 2025-12-11
 **版本:** 2.0.0

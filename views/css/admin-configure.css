@@ -1,0 +1,107 @@
+/**
+ * Copyright since 2007 PrestaShop SA and Contributors
+ * PrestaShop is an International Registered Trademark & Property of PrestaShop SA
+ *
+ * NOTICE OF LICENSE
+ *
+ * This source file is subject to the Academic Free License 3.0 (AFL-3.0)
+ * https://opensource.org/licenses/AFL-3.0
+ */
+
+.smarty-dev-panel {
+  margin: 20px 0;
+}
+
+.smarty-dev-panel .panel-heading {
+  background: #f8f9fa;
+  padding: 15px;
+}
+
+.smarty-dev-panel .panel-heading h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.smarty-dev-setting {
+  padding: 20px;
+  border-bottom: 1px solid #eee;
+}
+
+.smarty-dev-setting:last-child {
+  border-bottom: none;
+}
+
+.smarty-dev-setting label {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  margin: 0;
+}
+
+.smarty-dev-setting label span.title {
+  flex: 1;
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.smarty-dev-setting .desc {
+  margin: 8px 0 0 0;
+  color: #6c757d;
+  font-size: 13px;
+}
+
+/* Toggle Switch Styles */
+.smarty-toggle {
+  position: relative;
+  display: inline-block;
+  width: 50px;
+  height: 26px;
+}
+
+.smarty-toggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.smarty-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  transition: .3s;
+  border-radius: 26px;
+}
+
+.smarty-slider:before {
+  position: absolute;
+  content: "";
+  height: 20px;
+  width: 20px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: .3s;
+  border-radius: 50%;
+}
+
+.smarty-toggle input:checked+.smarty-slider {
+  background-color: #00a859;
+}
+
+.smarty-toggle input:checked+.smarty-slider:before {
+  transform: translateX(24px);
+}
+
+.smarty-toggle input:disabled+.smarty-slider {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.cache-btn {
+  margin: 20px;
+}
